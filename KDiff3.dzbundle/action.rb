@@ -6,36 +6,42 @@
 # Handles: Files
 # Events: Clicked, Dragged
 # KeyModifiers: Command, Option, Control, Shift
+# OptionsNIB: ChooseApplication
 # SkipConfig: Yes
+# SkipValidation: Yes
 # RunsSandboxed: Yes
 # UniqueID: 1033
-# Version: 1.0
-# MinDropzoneVersion: 3.0
+# Version: 1.0.1
+# MinDropzoneVersion: 3.2.3
 
 def findApp
-	# try default location to start
-	app = '/Applications/kdiff3.app/Contents/MacOS/kdiff3'
-
-	unless FileTest.executable?(app)
-
-		if !ENV['apppath'].nil? and FileTest.executable?(ENV['apppath'])
+	if !ENV['path'].nil? 
+		if FileTest.file?(ENV['path']) && FileTest.executable?(ENV['path'])
 			# we have a valid saved path
-			app = ENV['apppath']
-
+			app = ENV['path']
 		else
-			# no saved path, so prompt for it
-			output = $dz.cocoa_dialog('fileselect --title "Select the Application" --informative-text "Browse to the KDiff3 app:" --with-directory /Applications --select-directories ‑‑with‑extensions .app')
-			apppkg = output.strip
-
-			$dz.fail("Cancelled") if apppkg == ''
-
-			app = "#{apppkg}/Contents/MacOS/kdiff3"
-			unless FileTest.executable?(app)
-				$dz.fail('Cannot find KDiff3 at given location; please try again and browse to the appropriate app.')
+            app = "#{ENV['path']}/Contents/MacOS/kdiff3" # actual executable inside the kdiff3.app package
+			unless FileTest.file?(app) && FileTest.executable?(app)
+				$dz.fail('Cannot find KDiff3 at given location; please choose the correct path in the User Action configuration.')
 			end
+			$dz.save_value('path', app) # update saved value
+		end
 
-			# ...and save it for future use
-			$dz.save_value('apppath', app)
+	else
+		# no configured path, try default location to start
+		app = '/Applications/kdiff3.app/Contents/MacOS/kdiff3XXXXXXXX'
+
+		unless FileTest.file?(app) && FileTest.executable?(app)
+				# no saved path, so prompt for it
+				output = $dz.cocoa_dialog('fileselect --title "Locate the KDiff3 App" --informative-text "Please browse to the KDiff3 app:" --with-directory /Applications --select-directories ‑‑with‑extensions .app')
+				apppkg = output.strip
+				$dz.fail("Cancelled") if apppkg == ''
+                
+				app = "#{apppkg}/Contents/MacOS/kdiff3" # actual exe inside the app package
+				unless FileTest.file?(app) && FileTest.executable?(app)
+					$dz.fail('Cannot find KDiff3 at given location; please choose the correct path in the User Action configuration.')
+				end
+				$dz.save_value('path', app) # save the new path
 		end
 
 	end
@@ -57,7 +63,7 @@ def dragged
 	end
 
 	result = system(findApp(), *$items)
-	#$dz.fail("Error executing KDiff3") if result > 0 #skip error check due to Mavericks' "modalSession has been exited prematurely" bug on KDiff3 and other apps
+    #$dz.fail("Error executing KDiff3") if result > 0 #skip error check due to Mavericks' "modalSession has been exited prematurely" bug on KDiff3 and other apps
 	$dz.url(false)
 end
 
@@ -65,6 +71,6 @@ def clicked
 	$dz.begin("Opening KDiff3...")
 
 	result = system(findApp())
-	#$dz.fail("Error executing KDiff3") if result > 0  #skip error check due to Mavericks' "modalSession has been exited prematurely" bug on KDiff3 and other apps
+    #$dz.fail("Error executing KDiff3") if result > 0  #skip error check due to Mavericks' "modalSession has been exited prematurely" bug on KDiff3 and other apps
 	$dz.url(false)
 end
